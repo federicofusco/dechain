@@ -6,7 +6,6 @@
 #include <openssl/pem.h>
 #include <openssl/bio.h>
 
-#include "transaction.hpp"
 #include "wallet.hpp"
 
 Wallet::Wallet ( int key_size = 4096 ) {
@@ -34,37 +33,16 @@ EVP_PKEY *Wallet::generate_keypair ( int key_size ) {
 	EVP_PKEY *keypair = EVP_PKEY_new ();
 
 	// Sets the public exponent
-	if ( BN_set_word ( e, RSA_F4 ) != 1 ) {
-		std::cout << "Failed to set RSA public exponent!" << std::endl;
-
-		// Dealloc
-		RSA_free ( rsa );
-		BN_free ( e );
-		EVP_PKEY_free ( keypair );
-		return NULL;
-	}
+	if ( BN_set_word ( e, RSA_F4 ) != 1 )
+		throw std::runtime_error ( "Failed to set the RSA public exponent!" );
 
 	// Generates new RSA keypair
-	if ( RSA_generate_key_ex ( rsa, key_size, e, NULL ) != 1 ) {
-		std::cout << "Failed to generate RSA keypair!" << std::endl;
-
-		// Dealloc
-		RSA_free ( rsa );
-		BN_free ( e );
-		EVP_PKEY_free ( keypair );
-		return NULL;
-	} 
+	if ( RSA_generate_key_ex ( rsa, key_size, e, NULL ) != 1 )
+		throw std::runtime_error ( "Failed to generate the RSA keypair!" );
 
 	// Assigns the RSA keypair to an EVP_PKEY keypair
-	if ( EVP_PKEY_assign_RSA ( keypair, rsa ) != 1 ) {
-		std::cout << "Failed to assign RSA keypair!" << std::endl;
-		
-		// Dealloc
-		RSA_free ( rsa );
-		BN_free ( e );
-		EVP_PKEY_free ( keypair );
-		return NULL;
-	}
+	if ( EVP_PKEY_assign_RSA ( keypair, rsa ) != 1 )
+		throw std::runtime_error ( "Failed to assign the RSA keypair!" );
 
 	return keypair;
 
@@ -98,37 +76,28 @@ std::string Wallet::public_key_to_string ( EVP_PKEY *key ) {
 int Wallet::sign_transaction ( Transaction *transaction ) {
 
 	// Checks that the public key matches the transaction author
-	if ( transaction -> author != public_key ) {
-		std::cout << "Attempted signing transaction with different author!" << std::endl;
-		return -1;
-	}
+	if ( transaction -> author != public_key )
+		throw std::runtime_error ( "Attempted signing transaction with different author!" );
 
 	// Creates the signing context
 	EVP_MD_CTX *context = EVP_MD_CTX_create ();
-	if ( EVP_DigestSignInit ( context, NULL, EVP_sha256 (), NULL, keypair ) != 1 ) {
-		std::cout << "Failed to sign transaction!" << std::endl;
-		return -1;
-	} 
+	if ( EVP_DigestSignInit ( context, NULL, EVP_sha256 (), NULL, keypair ) != 1 )
+		throw std::runtime_error ( "Failed tot sign transaction!" );
 
-	if ( EVP_DigestSignUpdate ( context, (const unsigned char*) transaction -> to_string ( false ).c_str (), transaction -> to_string ( false ).length () ) != 1 ) {
-		std::cout << "Failed to sign transaction!" << std::endl;
-		return -1;
-	}
+	if ( EVP_DigestSignUpdate ( context, (const unsigned char*) transaction -> to_string ( false ).c_str (), transaction -> to_string ( false ).length () ) != 1 )
+		throw std::runtime_error ( "Failed to sign transaction!" );
 
 	// Gets the hash size
 	size_t x = 8;
 	size_t *signature_length = &x;
-	if ( EVP_DigestSignFinal ( context, NULL, signature_length ) != 1 ) {
-		std::cout << "Failed to sign transaction!" << std::endl;
-		return -1;
-	}
+	if ( EVP_DigestSignFinal ( context, NULL, signature_length ) != 1 )
+		throw std::runtime_error ( "Failedd to sign transaction!" );
 
 	// Allocates memory for the signature hash
 	unsigned char *signature = (unsigned char*) malloc ( *signature_length );
-	if ( EVP_DigestSignFinal ( context, signature, signature_length ) != 1 ) {
-		std::cout << "Failed to sign transaction!" << std::endl;
-		return -1;
-	} 
+	if ( EVP_DigestSignFinal ( context, signature, signature_length ) != 1 )
+		throw std::runtime_error ( "Failed to sign transaction!" );
+
 	std::string output ( reinterpret_cast<char*>(signature), *signature_length); 
 	transaction -> set_signature ( output );
 
