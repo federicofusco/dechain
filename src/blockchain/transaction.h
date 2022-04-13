@@ -9,7 +9,7 @@
 #include <iomanip>
 #include "transaction_input.h"
 #include "transaction_output.h"
-#include "crypto.h"
+#include "algorithms/crypto.h"
 
 class Transaction {
 	public:
